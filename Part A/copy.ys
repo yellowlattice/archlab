@@ -1,0 +1,66 @@
+#implement the Y86 assembly code based on the given c code
+#
+####################################################################
+#   Leader's name : хн╫Ю Renjie                                    #
+#   STUDENT ID : 516021910425                                      #
+####################################################################
+#
+#
+#Program start
+#copy block ys code
+.pos 0x0
+irmovl Stack,%esp
+irmovl Stack,%ebp
+irmovl $3,%edx
+pushl %edx              #push 3
+irmovl dest,%edx
+pushl %edx              #push dest
+irmovl src,%edx
+pushl %edx              #push src
+call copy
+halt
+
+
+#data block
+.align 4
+src:
+    .long 0x00a
+    .long 0x0b0
+    .long 0xc00
+# Destination
+dest:
+    .long 0x111
+    .long 0x222
+    .long 0x333
+
+#function
+copy:
+    pushl %ebp
+    rrmovl %esp,%ebp   
+    mrmovl 8(%ebp),%ebx    #%ebx = src
+    mrmovl 12(%ebp),%esi   #%esi = dest
+    mrmovl 16(%ebp),%edi   #%edi = len = 3
+    xorl   %eax,%eax       #%eax = 0
+    andl   %edi,%edi
+    je END
+LOOP:
+    mrmovl (%ebx),%edx     #%edx = val = M[src]
+    rmmovl %edx,(%esi)     #M[dest] = %edx = val
+    xorl %edx,%eax         #%eax = checksum
+    irmovl $4,%edx
+    addl %edx,%ebx         #src += 4
+    addl %edx,%esi         #dest += 4
+    irmovl $1,%edx
+    subl %edx,%edi         #len--
+    andl %edi,%edi         #if len != 0 loop 
+    #halt
+    jne LOOP
+END:
+    rrmovl %ebp,%esp
+    popl %ebp
+    ret
+    
+
+
+.pos 0x300   #stack starts here
+Stack:

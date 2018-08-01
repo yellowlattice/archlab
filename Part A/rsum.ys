@@ -1,0 +1,52 @@
+#implement the Y86 assembly code based on the given c code
+#
+####################################################################
+#   Leader's name : хн╫Ю Renjie                                    #
+#   STUDENT ID : 516021910425                                      #
+####################################################################
+#
+#
+#Program start
+.pos 0x0
+irmovl Stack,%esp      
+irmovl Stack,%ebp
+irmovl ele1,%edx
+pushl %edx
+call rsum_list
+halt
+# Sample linked list
+.align 4
+ele1:
+.long 0x00a
+.long ele2
+ele2:
+.long 0x0b0
+.long ele3
+ele3:
+.long 0xc00
+.long 0
+#function
+rsum_list:                 #function rsum_list
+    pushl %ebp             #push returning address, that is save caller %ebp  
+    rrmovl %esp,%ebp       #current %ebp = caller %esp
+    irmovl $4,%ebx
+    subl %ebx,%esp         #current %esp = current %ebp - 4(because there is only ls-val to save in current stack frame)
+    xorl %eax,%eax
+    mrmovl 8(%ebp),%edx    #ls = ls-next(the first parament at caller stack frame)
+    andl %edx,%edx
+    je END                 #if ls == 0 quit
+                            
+    mrmovl (%edx),%esi      
+    rmmovl %esi,(%esp)      #we save local var ls-val at %ebp - 4   
+    mrmovl 4(%edx),%esi
+    pushl %esi              #push ls-next 
+    call rsum_list          #call function rsum_list
+    mrmovl 4(%esp),%esi     #after returning from callee, get ls-val we saved
+    addl %esi,%eax          #add to %eax
+END:
+    rrmovl %ebp,%esp        #current %esp = current %ebp = caller %esp
+    popl %ebp               #pop returning address, that is caller %ebp
+    ret                     #so we return to caller stack frame
+.pos 0x300 
+
+Stack:

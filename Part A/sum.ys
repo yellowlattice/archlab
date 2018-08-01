@@ -1,0 +1,46 @@
+#implement the Y86 assembly code based on the given c code
+#
+####################################################################
+#   Leader's name : хн╫Ю Renjie                                    #
+#   STUDENT ID : 516021910425                                      #
+####################################################################
+#
+#
+#Program start
+.pos 0x0
+irmovl Stack,%esp
+irmovl Stack,%ebp          #%ebp: stack address
+irmovl ele1,%edx         
+pushl %edx                 #push ele1 in stack
+call sum_list
+# Sample linked list
+.align 4
+ele1:
+.long 0x00a
+.long ele2
+ele2:
+.long 0x0b0
+.long ele3
+ele3:
+.long 0xc00
+.long 0
+#function
+sum_list:
+    pushl %ebp            #push %ebp in stack      
+    rrmovl %esp,%ebp     
+    xorl %eax,%eax        #%eax = 0
+    mrmovl 8(%ebp),%edx   #let %edx = ls = ele1
+    andl %edx,%edx
+    je END                #if ls == 0, quit
+LOOP:
+    mrmovl (%edx),%esi    #let %esi = ls->val
+    addl %esi,%eax        #val = %eax; val += ls-val
+    mrmovl 4(%edx),%edx   #let %edx = ls = ls->next
+    andl %edx,%edx
+    jne LOOP              #if ls != 0, loop
+END:
+    rrmovl %ebp,%esp
+    popl %ebp
+    ret
+.pos 0x300   #stack starts here
+Stack:

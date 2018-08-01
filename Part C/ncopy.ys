@@ -1,0 +1,136 @@
+#/* $begin ncopy-ys */
+
+##################################################################
+#   Leader's name : 任洁 Renjie                                  #
+#   STUDENT ID : 516021910425                                    #
+##################################################################
+
+###################         Analysis         #####################
+#     we analyze the function in ncopy.c, fingding that there are#
+#  mainly three operations slowing down the function:            #
+#  1. irmovl $1, %edi                                            #
+#	  addl %edi, %eax	                                 #
+#  2. mrmovl (%ebx), %esi	                                 #
+#	  rmmovl %esi, (%ecx)      （load-use hazard）           #
+#  3. too many jump instructions                                 #
+###################         Solution        ######################
+#     So, we optimize the function in two aspects at the same    #
+#  time:                                                         #
+#  1. Implement the "iaddl" to solve the first problem, which    #
+#     carried out in pipe-full.hcl                               #
+#  2. There will be a cycle wasted when load-use hazard happen.  # 
+#     We add a "mrmovl" operation between load and use, meaning  #
+#     that we unroll the loop and handle two data in one loop    #
+#     cycle. With this improvement, the number of jump decreases #
+#     at the same time. After test, we find that two-data loop   #
+#     still doesn't meet the requirement due to jumps. So we use #
+#     4-data loop and the average CPE is 9.48.                   #
+###################      Implementation     ######################
+#     In the loop header, we compare the length of data with 4.  #
+#     If there are 4 or more data, the program runs into a       #
+#  4-data loop. In the loop, we reposition the instructions to   #
+#  avoid hazard.                                                 #
+#     If there are 3 or less data, we do not need loop. First    #
+#  read two data and copy them to dst, then copy the last data   #
+#  if the data exists.                                           #
+##################################################################
+
+##################################################################
+# ncopy.ys - Copy a src block of len ints to dst.
+# Return the number of positive ints (>0) contained in src.
+#
+# Include your name and ID here.
+#
+# Describe how and why you modified the baseline code.
+#
+##################################################################
+# Do not modify this portion
+# Function prologue.
+ncopy:	pushl %ebp		# Save old frame pointer
+	rrmovl %esp,%ebp	# Set up new frame pointer
+	pushl %esi		# Save callee-save regs
+	pushl %ebx
+	pushl %edi
+	mrmovl 8(%ebp),%ebx	# src
+	mrmovl 16(%ebp),%edx	# len
+	mrmovl 12(%ebp),%ecx	# dst
+
+##################################################################
+# You can modify this portion
+# Loop header
+        xorl    %eax , %eax            # count=0
+        iaddl   $-4 , %edx             # iaddl implementation is in pipe-full.hcl
+        andl    %edx , %edx            # if length < 3
+        jl      less
+Loop:   
+        mrmovl  (%ebx) , %esi          # the 1st element -> %esi
+        mrmovl  4(%ebx) , %edi         # the 2nd element -> %edi
+        rmmovl  %esi , (%ecx)          # handle the 1st element
+        andl    %esi , %esi
+        jle     N1pos                  # if <= 0
+        iaddl   $1 , %eax              # else count++
+N1pos:
+        rmmovl  %edi , 4(%ecx)         # the 2nd element -> the next place in dst
+        andl    %edi , %edi
+        jle     N2pos                  # if <= 0
+        iaddl   $1 , %eax
+N2pos:
+        mrmovl  8(%ebx) , %esi         # the 3rd element -> %esi
+        mrmovl  12(%ebx) , %edi        # the 4th element -> %edi
+        rmmovl  %esi , 8(%ecx)         # handle the 3rd element
+        andl    %esi , %esi             
+        jle     N3pos
+        iaddl   $1 , %eax
+N3pos: 
+        rmmovl  %edi , 12(%ecx)        # handle the 4th element
+        andl    %edi , %edi
+        jle     N4pos
+        iaddl   $1 , %eax
+N4pos:
+        iaddl   $16 , %ebx             # src = src+4
+        iaddl   $16 , %ecx             # dst = dst+4
+        iaddl   $-4 , %edx             # length = length-4
+        jge     Loop                   # if length >= 0 ( if there are 4 or more data )
+
+#less than 4
+less:  
+        iaddl   $4 , %edx              # restore the original length
+        iaddl   $-1 , %edx              
+        jl      Done                   # if length < 1 , done
+        mrmovl  (%ebx) , %esi          # the 1st element -> %esi
+        mrmovl  4(%ebx) , %edi         # the 2nd element -> %edi
+        rmmovl  %esi , (%ecx)          # handle the 1st element
+        andl    %esi , %esi
+        jle     lN1pos
+        iaddl   $1 , %eax
+lN1pos:  
+        iaddl   $-1 , %edx             
+        jl      Done                   # if length < 1 , done
+        rmmovl  %edi , 4(%ecx)         # handle the 2nd element
+        andl    %edi , %edi
+        jle     lN2pos
+        iaddl   $1 , %eax
+lN2pos:
+        iaddl   $-1 , %edx  
+        jl      Done                   # if length < 1 , done
+        mrmovl  8(%ebx) , %esi         # the 3rd element -> %esi
+        rmmovl  %esi , 8(%ecx)         # handle the 3rd element cuz length < 4
+        andl    %esi ,%esi
+        jle     Done
+        iaddl   $1 , %eax
+   
+##################################################################
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	popl %edi               
+	popl %ebx
+	popl %esi
+	rrmovl %ebp, %esp
+	popl %ebp
+	ret
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */
+
